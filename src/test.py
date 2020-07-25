@@ -1,2 +1,2 @@
-import numpy
 print('Hello, world!')
+print('Slack Test')
