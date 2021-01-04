@@ -1,4 +1,4 @@
-class EventHook(object):
+class EventHook(object):#알고리즘에 상관없는 파일.
 
     def __init__(self):
         self.__handlers = []

@@ -24,8 +24,10 @@ parser.add_argument("-d", "--debug", dest="debug", default=False, action="store_
 args = vars(parser.parse_args())
 
 
+
 class Main:
     slideCounter = 0
+    ratioXY = 0
 
     def __init__(self, debug, vidpath, output, stepSize, progressInterval):
         self.vidpath = vidpath
@@ -43,35 +45,43 @@ class Main:
     # crop image to slide size
     def cropImage(self, frame):
         min_area = (frame.shape[0] * frame.shape[1]) * (2 / 3)
-        gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
-        thresh = cv2.threshold(gray, 100, 255, cv2.THRESH_BINARY)[1]
+        gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)#회색으로 만들고
+        thresh = cv2.threshold(gray, 100, 255, cv2.THRESH_BINARY)[1]#이미지 이진화(흑백)
         contours = cv2.findContours(
-            thresh, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
-        contours = contours[0] if imutils.is_cv2() else contours[1]
-
+            thresh, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)#가장 큰 컨투어 찾기
+        contours = contours[0] if imutils.is_cv2() else contours[1]#cv버전에 따라 컨투어 변환
         for cnt in contours:
             if cv2.contourArea(cnt) > min_area:
                 x, y, w, h = cv2.boundingRect(cnt)
                 crop = frame[y:y+h, x:x+w]
                 return crop
 
-    def checkRatio(self, frame, min, max):
-        ratio = frame.shape[1] / frame.shape[0]
-        return ratio >= min and ratio <= max
+#지금은 쓸모없는 함수. 앞으로도 없을 듯.
+    def checkRatio(self, frame):#이전엔 프레임크기 맞추는 용. 지금은 컨투어 올바르게 잡는 용도.
+        if self.ratioXY == 0:#첫 슬라이드라면 바로 통과.
+            self.ratioXY = int(frame.shape[0] / frame.shape[1] * 20)#20은 임의의 수.정확도.
+            return True
+        if self.ratioXY == int(frame.shape[0] / frame.shape[1] * 20):
+            return True
+        return False
+
+        #ratio = frame.shape[1] / frame.shape[0]
+        #return ratio >= min and ratio <= max
 
     def onTrigger(self, frame):
         frame = self.cropImage(frame)
-        if frame is not None and self.checkRatio(frame, 1.2, 1.5):
+        if frame is not None:
             if self.dupeHandler.check(frame):
                 print("Found a new slide!")
-            # self.saveSlide(frame)
+            self.saveSlide(frame)
 
+#이건 슬라이드를 jpg로 하나씩 저장하는 함수
     def saveSlide(self, slide):
-        if not os.path.exists(self.output):
-            os.makedirs(self.output)
+        if not os.path.exists("asdf"):
+            os.makedirs("asdf")
         print("Saving slide " + str(self.slideCounter) + "...")
         cv2.imwrite(os.path.join(
-            self.output, str(self.slideCounter) + ".jpg"), slide)
+            "asdf", str(self.slideCounter) + ".jpg"), slide)
         self.slideCounter += 1
 
     def onProgress(self, percent, pos):

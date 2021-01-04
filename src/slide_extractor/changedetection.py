@@ -9,7 +9,7 @@ class ChangeDetection:
     # minimum contour area (1000)
     minArea = 1000
     # maximum frames before firstFrame reset (3)
-    maxIdle = 3
+    maxIdle = 2
     # frame step size
     stepSize = 20
     # amount of percent between each progress event
@@ -44,7 +44,7 @@ class ChangeDetection:
 
         totalFrames = camera.get(cv2.CAP_PROP_FRAME_COUNT) - 1
 
-        while currentPosition < totalFrames:
+        while currentPosition < totalFrames: #동영상이 끝날 때까지
             (grabbed, frame) = camera.read()
             if frame is None:
                 break
@@ -61,7 +61,7 @@ class ChangeDetection:
             if prevFrame is None:
                 prevFrame = np.zeros(gray.shape, np.uint8)
 
-            frameDelta = cv2.absdiff(firstFrame, gray)#회색과 fristFrame의 차이값 구하기
+            frameDelta = cv2.absdiff(firstFrame, gray)  # 현재frame과 fristFrame의 차이점 구하기
             thresh = self.calcThresh(frameDelta)
             cnts = self.detectContours(thresh)
 
@@ -70,7 +70,8 @@ class ChangeDetection:
                 prevDelta = cv2.absdiff(prevFrame, gray)
                 prevThresh = self.calcThresh(prevDelta)
                 # we have no changes from the previous frame
-                if cv2.countNonZero(prevThresh) == 0:
+                #if cv2.countNonZero(prevThresh) == 0:
+                if cv2.countNonZero(thresh) > frame.shape[0] * frame.shape[1] / 8:  #**변경점.
                     idleCount += 1
                 else:
                     idleCount = 0
@@ -82,8 +83,10 @@ class ChangeDetection:
                 idleCount = 0
 
             prevFrame = gray
+
             progress = (currentPosition / totalFrames) * 100
 
+            # 터미널에 진행퍼센트 출력
             if progress - lastProgress >= self.progressInterval:
                 lastProgress = progress
                 self.onProgress.fire(progress, currentPosition)
@@ -119,12 +122,12 @@ class ChangeDetection:
         cv2.destroyAllWindows()
 
     def calcThresh(self, frame):
-        thresh = cv2.threshold(frame, 25, 255, cv2.THRESH_BINARY)[1]    #frame을 흑백으로 판단하는 건가? or 3색만 인식?
+        thresh = cv2.threshold(frame, 10, 255, cv2.THRESH_BINARY)[1]    #흑백사진으로.
         return cv2.dilate(thresh, None, iterations=2)                  #ppt의 object들 굵어지게 함.
 
     def detectContours(self, thresh):
         cnts = cv2.findContours(
-            thresh.copy(), cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
+            thresh.copy(), cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE) #가장 바깥쪽 컨투어를 찾는다.
         cnts = cnts[0] if imutils.is_cv2() else cnts[1]
 
         validCnts = []

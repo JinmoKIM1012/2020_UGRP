@@ -1,5 +1,7 @@
 import numpy as np
 import cv2
+import imutils
+#import sys
 
 
 class DuplicateHandler:
@@ -9,9 +11,9 @@ class DuplicateHandler:
         self.threshold = thresh
 
     def check(self, img, add=True):
-        for i in self.entries:
-            if self.calcDiff(i, img) < self.threshold:
-                return False
+        #for i in self.entries:
+        #    if self.calcDiff(i, img) < self.threshold:
+        #        return False
 
         if add:
             self.entries.append(img)
@@ -27,12 +29,20 @@ class DuplicateHandler:
 
         # bring the two images to the same size
         if img1.shape[0] > img2.shape[0] or img1.shape[1] > img2.shape[1]:
-            img1 = img1[0: img2.shape[0], 0: img2.shape[1]]
+            img1 = img1.reshape((img2.shape[0],img2.shape[1]))
+            #img1 = img1[0: img2.shape[0], 0: img2.shape[1]]
         elif img2.shape[0] > img1.shape[0] or img2.shape[1] > img1.shape[1]:
-            img2 = img2[0: img1.shape[0], 0: img1.shape[1]]
+            img2 = img2.reshape((img1.shape[0], img1.shape[1]))
+            #img2 = img2[0: img1.shape[0], 0: img1.shape[1]]
 
         img1 = cv2.GaussianBlur(img1, (11, 11), 0)
         img2 = cv2.GaussianBlur(img2, (11, 11), 0)
+
+        #np.set_printoptions(threshold=sys.maxsize)
+        #f = open("A.txt", 'w')
+        #f.write(str(img1))
+        #f.write(str(img2))
+        #f.close()
 
         diff = cv2.absdiff(img1, img2)
         diff = cv2.threshold(diff, 25, 255, cv2.THRESH_BINARY)[1]
