@@ -1,32 +1,58 @@
-import time
+# import time
 import numpy as np
 import cv2
 import imutils
-import eventhook
+# import eventhook
+
+class EventHook(object):
+
+    def __init__(self):
+        self.__handlers = []
+
+    def __iadd__(self, handler):
+        self.__handlers.append(handler)
+        return self
+
+    def __isub__(self, handler):
+        self.__handlers.remove(handler)
+        return self
+
+    def fire(self, *args, **keywargs):
+        for handler in self.__handlers:
+            handler(*args, **keywargs)
+
+    def clearObjectHandlers(self, inObject):
+        for theHandler in self.__handlers:
+            if theHandler.im_self == inObject:
+                self -= theHandler
+
 
 
 class ChangeDetection:
     # minimum contour area (1000)
     minArea = 1000
     # maximum frames before firstFrame reset (3)
-    maxIdle = 2
+    #maxIdle = 3
     # frame step size
     stepSize = 20
     # amount of percent between each progress event
     progressInterval = 1
     # event that fires when motion is confirmed
-    onTrigger = eventhook.EventHook()
+    onTrigger = EventHook()
     # event that gives feedback of how far the detection is
-    onProgress = eventhook.EventHook()
+    # onProgress = eventhook.EventHook()
 
     def __init__(self, stepSize, progressInterval, showDebug=False):
         self.stepSize = int(stepSize) #고침. stepSize -> int(stepSize)
         self.progressInterval = progressInterval
         self.showDebug = showDebug
+        #강의영상으로 한정되어있기 떄문에 짧게 넘기는 슬라이드는 중요도를 낮춘다.
+        # 그리고, maxIdle을 고정시키는 것은 멍청한 짓이므로 stepSize에 반비례하게 설정한다.
+        #self.maxIdle = 200 / int(stepSize)
 
     def start(self, camera):
         firstFrame = None
-        prevFrame = None
+        # prevOG = None
         # amount of contours
         contAmount = 0
 
@@ -38,7 +64,7 @@ class ChangeDetection:
         currentPosition = 0
         lastProgress = 0
 
-        startTime = time.time()
+        # startTime = time.time()
 
         print('change detection initiated')
 
@@ -58,38 +84,24 @@ class ChangeDetection:
 
             if firstFrame is None:
                 firstFrame = np.zeros(gray.shape, np.uint8)
-            if prevFrame is None:
-                prevFrame = np.zeros(gray.shape, np.uint8)
 
             frameDelta = cv2.absdiff(firstFrame, gray)  # 현재frame과 fristFrame의 차이점 구하기
             thresh = self.calcThresh(frameDelta)
             cnts = self.detectContours(thresh)
 
-            # we have motion, possible new firstFrame?
-            if len(cnts) > 0:
-                prevDelta = cv2.absdiff(prevFrame, gray)
-                prevThresh = self.calcThresh(prevDelta)
-                # we have no changes from the previous frame
-                #if cv2.countNonZero(prevThresh) == 0:
-                if cv2.countNonZero(thresh) > frame.shape[0] * frame.shape[1] / 8:  #**변경점.
-                    idleCount += 1
-                else:
-                    idleCount = 0
-
-            # we have now seen the same image for too long, reset firstImage
-            if idleCount > self.maxIdle:
-                firstFrame = prevFrame
+            # firstFrame에는 슬라이드 첫 장면, 즉 낙서가 없는 장면 저장.
+            # prevFrame에는 슬라이드 마지막 장면, 즉 낙서가 다 포함된 장면 저장.
+            # 낙서를 다 지우는 장면에 대한 예외처리를 위해 gray는 firstFrame과 비교한다.
+            if cv2.countNonZero(thresh) > frame.shape[0] * frame.shape[1] / 8:
                 self.onTrigger.fire(original)
-                idleCount = 0
 
-            prevFrame = gray
-
+            firstFrame = gray
             progress = (currentPosition / totalFrames) * 100
 
             # 터미널에 진행퍼센트 출력
-            if progress - lastProgress >= self.progressInterval:
-                lastProgress = progress
-                self.onProgress.fire(progress, currentPosition)
+            # if progress - lastProgress >= self.progressInterval:
+            #     lastProgress = progress
+            #     self.onProgress.fire(progress, currentPosition)
 
             camera.set(1, min(currentPosition +
                               self.stepSize, totalFrames))
