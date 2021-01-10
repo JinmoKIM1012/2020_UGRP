@@ -56,46 +56,51 @@ class image_to_words:
 
         return self.cropped_imgs
 
+    def remove_noise(self, image):
+        img_hsv = cv2.cvtColor(image, cv2.COLOR_BGR2HSV)
+
+        lower_red = (-10, 30, 30)
+        upper_red = (10, 255, 255)
+        img_mask = cv2.inRange(img_hsv, lower_red, upper_red)
+
+        image[img_mask > 0] = (255, 255, 255)
+
+        return image
+
     def pdf_to_title(self, image):
         y = image.shape
         title_y = y[1] / 3
+        image = self.remove_noise(image)
 
         self.gray = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
-        blurred = cv2.GaussianBlur(self.gray, (27, 7), 0)
+        blurred = cv2.GaussianBlur(self.gray, (25, 9), 0)
 
-        edged = cv2.Canny(blurred, 30, 150)
-        edged = cv2.dilate(edged, None, iterations=1)
-        edged = cv2.erode(edged, None, iterations=1)
+        edged = cv2.Canny(blurred, 30, 100)
+        edged = cv2.dilate(edged, None, iterations=2)
+        edged = cv2.erode(edged, None, iterations=2)
 
         cnts = cv2.findContours(edged.copy(), cv2.RETR_EXTERNAL,
                                 cv2.CHAIN_APPROX_SIMPLE)
         cnts = imutils.grab_contours(cnts)
         cnts = contours.sort_contours(cnts, method="left-to-right")[0]
 
-        cnts = [x for x in cnts if 7000 > cv2.contourArea(x) > 500]
+        cnts = [x for x in cnts if 7000 > cv2.contourArea(x) > 100]
 
-        check_first = 0
         highest = 1000
         leftmost = 1000
         middle_check = []
-
         #"""
         for cnt in cnts:
             x, y, w, h = cv2.boundingRect(cnt)
             box = np.array([x, y, w, h], dtype="int")
             if 30 < h < 55 and y < title_y:
-                print("23")
                 middle_check.append(box)
-                check_first = 1
         #"""
 
-        if check_first == 0:
-            for cnt in cnts:
-                x, y, w, h = cv2.boundingRect(cnt)
-                box = np.array([x, y, w, h], dtype="int")
-                if 45 < h < 90:
-                    middle_check.append(box)
+        if not middle_check:
+            return image, middle_check
 
+        #"""
         for cnt in middle_check:
             if cnt[1] < highest:
                 highest = cnt[1]
