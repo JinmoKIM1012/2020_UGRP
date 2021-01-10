@@ -57,8 +57,11 @@ class image_to_words:
         return self.cropped_imgs
 
     def pdf_to_title(self, image):
+        y = image.shape
+        title_y = y[1] / 3
+
         self.gray = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
-        blurred = cv2.GaussianBlur(self.gray, (25, 7), 0)
+        blurred = cv2.GaussianBlur(self.gray, (27, 7), 0)
 
         edged = cv2.Canny(blurred, 30, 150)
         edged = cv2.dilate(edged, None, iterations=1)
@@ -69,20 +72,43 @@ class image_to_words:
         cnts = imutils.grab_contours(cnts)
         cnts = contours.sort_contours(cnts, method="left-to-right")[0]
 
-        cnts = [x for x in cnts if cv2.contourArea(x) > 100]
+        cnts = [x for x in cnts if 7000 > cv2.contourArea(x) > 500]
 
+        check_first = 0
         highest = 1000
         leftmost = 1000
+        middle_check = []
 
+        #"""
         for cnt in cnts:
             x, y, w, h = cv2.boundingRect(cnt)
-            if y < highest:
-                highest = y
-            if 10 < y - highest < 10 and x < leftmost:
-                highest = y
+            box = np.array([x, y, w, h], dtype="int")
+            if 30 < h < 55 and y < title_y:
+                print("23")
+                middle_check.append(box)
+                check_first = 1
+        #"""
 
-        for cnt in cnts:
-            x, y, w, h = cv2.boundingRect(cnt)
+        if check_first == 0:
+            for cnt in cnts:
+                x, y, w, h = cv2.boundingRect(cnt)
+                box = np.array([x, y, w, h], dtype="int")
+                if 45 < h < 90:
+                    middle_check.append(box)
+
+        for cnt in middle_check:
+            if cnt[1] < highest:
+                highest = cnt[1]
+            if 10 < cnt[1] - highest < 10 and cnt[0] < leftmost:
+                highest = cnt[1]
+        #"""
+
+        #"""
+        for cnt in middle_check:
+            x = cnt[0]
+            y = cnt[1]
+            w = cnt[2]
+            h = cnt[3]
             box = np.array([[x, y], [x + w, y], [x + w, y + h], [x, y + h]], dtype="int")
             if y - highest < 64:
                 self.title_num = self.title_num + 1
@@ -91,11 +117,13 @@ class image_to_words:
 
         self.sorting()
         self.crop_words()
+        #"""
 
-        #for cnt in self.title:
-        #    cv2.drawContours(image, [cnt.astype("int")], -1, (0, 0, 255), 2)
+        for cnt in self.title:
+        #for cnt in cnts:
+            cv2.drawContours(image, [cnt.astype("int")], -1, (0, 0, 255), 2)
 
-        return self.cropped_imgs
+        return image, self.cropped_imgs
 
     def sorting(self):
         result = []
@@ -131,4 +159,3 @@ class image_to_words:
             w = abs(word[0][0] - word[1][0])
             h = abs(word[0][1] - word[3][1])
             self.cropped_imgs.append(self.gray[y: y + h, x: x + w])
-
