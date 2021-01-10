@@ -1,8 +1,6 @@
-# import time
 import numpy as np
 import cv2
 import imutils
-# import eventhook
 
 class EventHook(object):
 
@@ -20,13 +18,6 @@ class EventHook(object):
     def fire(self, *args, **keywargs):
         for handler in self.__handlers:
             handler(*args, **keywargs)
-
-    def clearObjectHandlers(self, inObject):
-        for theHandler in self.__handlers:
-            if theHandler.im_self == inObject:
-                self -= theHandler
-
-
 
 class ChangeDetection:
     # minimum contour area (1000)
@@ -52,7 +43,6 @@ class ChangeDetection:
 
     def start(self, camera):
         firstFrame = None
-        # prevOG = None
         # amount of contours
         contAmount = 0
 
@@ -89,19 +79,10 @@ class ChangeDetection:
             thresh = self.calcThresh(frameDelta)
             cnts = self.detectContours(thresh)
 
-            # firstFrame에는 슬라이드 첫 장면, 즉 낙서가 없는 장면 저장.
-            # prevFrame에는 슬라이드 마지막 장면, 즉 낙서가 다 포함된 장면 저장.
-            # 낙서를 다 지우는 장면에 대한 예외처리를 위해 gray는 firstFrame과 비교한다.
-            if cv2.countNonZero(thresh) > frame.shape[0] * frame.shape[1] / 8:
+            if cv2.countNonZero(thresh) > frame.shape[0] * frame.shape[1] * 0.05:
                 self.onTrigger.fire(original)
 
             firstFrame = gray
-            progress = (currentPosition / totalFrames) * 100
-
-            # 터미널에 진행퍼센트 출력
-            # if progress - lastProgress >= self.progressInterval:
-            #     lastProgress = progress
-            #     self.onProgress.fire(progress, currentPosition)
 
             camera.set(1, min(currentPosition +
                               self.stepSize, totalFrames))
@@ -134,12 +115,12 @@ class ChangeDetection:
         cv2.destroyAllWindows()
 
     def calcThresh(self, frame):
-        thresh = cv2.threshold(frame, 10, 255, cv2.THRESH_BINARY)[1]    #흑백사진으로.
-        return cv2.dilate(thresh, None, iterations=2)                  #ppt의 object들 굵어지게 함.
+        thresh = cv2.threshold(frame, 10, 255, cv2.THRESH_BINARY)[1]
+        return cv2.dilate(thresh, None, iterations=2)
 
     def detectContours(self, thresh):
         cnts = cv2.findContours(
-            thresh.copy(), cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE) #가장 바깥쪽 컨투어를 찾는다.
+            thresh.copy(), cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
         cnts = cnts[0] if imutils.is_cv2() else cnts[1]
 
         validCnts = []
