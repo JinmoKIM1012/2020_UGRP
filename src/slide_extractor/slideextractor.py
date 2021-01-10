@@ -1,12 +1,9 @@
 import time
-# import datetime
 import os
 import argparse
 import cv2
 import imutils
-# import img2pdf
 import changedetection
-# import duplicatehandler
 import subprocess
 
 parser = argparse.ArgumentParser()
@@ -25,7 +22,7 @@ args = vars(parser.parse_args())
 
 
 class SlideExtractor:
-    slideCounter = 0
+    slideCounter = 10
     result = []
 
     def __init__(self, debug, vidpath, output, stepSize, progressInterval):
@@ -34,12 +31,6 @@ class SlideExtractor:
         self.detection = changedetection.ChangeDetection(
             stepSize, progressInterval, debug)
         # self.dupeHandler = duplicatehandler.DuplicateHandler(1)
-
-    # def strfdelta(self, tdelta, fmt):
-    #     d = {"days": tdelta.days}
-    #     d["hours"], rem = divmod(tdelta.seconds, 3600)
-    #     d["minutes"], d["seconds"] = divmod(rem, 60)
-    #     return fmt.format(**d)
 
     # crop image to slide size
     def cropImage(self, frame):
@@ -55,66 +46,47 @@ class SlideExtractor:
                 crop = frame[y:y+h, x:x+w]
                 return crop
 
-#지금은 쓸모없는 함수. 앞으로도 없을 듯.
-    # def checkRatio(self, frame):#이전엔 프레임크기 맞추는 용. 지금은 컨투어 올바르게 잡는 용도.
-    #     if self.ratioXY == 0:#첫 슬라이드라면 바로 통과.
-    #         self.ratioXY = int(frame.shape[0] / frame.shape[1] * 20)#20은 임의의 수.정확도.
-    #         return True
-    #     if self.ratioXY == int(frame.shape[0] / frame.shape[1] * 20):
-    #         return True
-    #     return False
-
-        #ratio = frame.shape[1] / frame.shape[0]
-        #return ratio >= min and ratio <= max
-
     def onTrigger(self, frame):
         frame = self.cropImage(frame)
         if frame is not None:
-            # if self.dupeHandler.check(frame):
-            #     print("Found a new slide!")
             self.saveSlide(frame)
 
-#이건 슬라이드를 jpg로 하나씩 저장하는 함수
+#save slide in directory
     def saveSlide(self, slide):
-        self.result.append(slide)
+        print("Saving slide " + str(self.slideCounter - 10) + "...")
+        cv2.imwrite(os.path.join(
+            "img", str(self.slideCounter) + ".jpg"), slide)
+        self.slideCounter += 1
+#list img after deduplication
+    def listImg(self):
+        path = "./img"
+        file_names = os.listdir(path)
 
-        # if not os.path.exists("asdf"):
-        #     os.makedirs("asdf")
-        # print("Saving slide " + str(self.slideCounter) + "...")
-        # cv2.imwrite(os.path.join(
-        #     "asdf", str(self.slideCounter) + ".jpg"), slide)
-        # self.slideCounter += 1
+        i = 0
+        for name in file_names:
+            src = os.path.join(path, name)
+            dst = str(i) + '.jpg'
+            dst = os.path.join(path, dst)
+            os.rename(src, dst)
+            i += 1
 
-    # def onProgress(self, percent, pos):
-    #     elapsed = time.time() - self.startTime
-    #     eta = (elapsed / percent) * (100 - percent)
-    #     fps = pos / elapsed
-    #     etaString = self.strfdelta(datetime.timedelta(seconds=eta),
-    #                                "{hours}h {minutes}min {seconds}s")
-    #     print("progress: ~%d%% @ %d fps | about %s left" %
-    #           (percent, fps, etaString))
-
-    # def convertToPDF(self):
-    #     imgs = []
-    #     for i in self.dupeHandler.entries:
-    #         imgs.append(cv2.imencode('.jpg', i)[1].tostring())
-    #
-    #     with open(self.output, "wb") as f:
-    #         f.write(img2pdf.convert(imgs))
+    def clearImg(self):
+        if not os.path.exists("./img"):
+            os.makedirs("./img")
+        file_names = os.listdir("./img")
+        for name in file_names:
+            os.remove(os.path.join("./img", name))
 
     def start(self):
+        now = time.localtime()
+        print("%04d/%02d/%02d %02d:%02d:%02d" % (now.tm_year, now.tm_mon, now.tm_mday, now.tm_hour, now.tm_min, now.tm_sec))
+        self.clearImg()
         self.detection.onTrigger += self.onTrigger
-        # self.detection.onProgress += self.onProgress
-
-        # self.startTime = time.time()
 
         self.detection.start(cv2.VideoCapture(self.vidpath.strip()))
 
         subprocess.call('python sort.py', shell=True)
-
-        # print("Saving PDF...")
-        # self.convertToPDF()
-
+        self.listImg()
         print("SlideExtractor Done.")
 
 
