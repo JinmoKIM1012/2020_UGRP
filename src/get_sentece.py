@@ -30,10 +30,12 @@ class pdf_to_sentence:
 
 
 if __name__ == '__main__':
-    image = cv2.imread('testccc.PNG')
+    image = cv2.imread('pdftest2.jpg')
 
     title = contour_pdf.image_to_words()
-    words = title.pdf_to_title(image)
+    image, words = title.pdf_to_title(image)
+
+    cv2.imshow('test', image)
 
     get_word = pdf_to_sentence()
     sentence = get_word.get_word(words)
