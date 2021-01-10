@@ -30,7 +30,7 @@ class pdf_to_sentence:
 
 
 if __name__ == '__main__':
-    image = cv2.imread('pdftest2.jpg')
+    image = cv2.imread('test7.jpg')
 
     title = contour_pdf.image_to_words()
     image, words = title.pdf_to_title(image)
@@ -41,6 +41,5 @@ if __name__ == '__main__':
     sentence = get_word.get_word(words)
 
     print(sentence)
-
     cv2.waitKey()
     cv2.destroyAllWindows()
