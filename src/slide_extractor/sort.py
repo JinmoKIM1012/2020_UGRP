@@ -18,3 +18,4 @@ if __name__ == '__main__':
     phasher = CNN()
     duplicates = phasher.find_duplicates_to_remove(image_dir='./img', min_similarity_threshold=0.95)
     for i in duplicates:
+        os.remove('./img/' + i)
