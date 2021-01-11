@@ -51,9 +51,6 @@ class image_to_words:
         self.sorting()
         self.crop_words()
 
-        #for cnt in self.title:
-        #    cv2.drawContours(image, [cnt.astype("int")], -1, (0, 0, 255), 2)
-
         return self.cropped_imgs
 
     def remove_noise(self, image):
@@ -89,26 +86,22 @@ class image_to_words:
         highest = 1000
         leftmost = 1000
         middle_check = []
-        #"""
+
         for cnt in cnts:
             x, y, w, h = cv2.boundingRect(cnt)
             box = np.array([x, y, w, h], dtype="int")
             if 30 < h < 55 and y < title_y:
                 middle_check.append(box)
-        #"""
 
         if not middle_check:
             return image, middle_check
 
-        #"""
         for cnt in middle_check:
             if cnt[1] < highest:
                 highest = cnt[1]
             if 10 < cnt[1] - highest < 10 and cnt[0] < leftmost:
                 highest = cnt[1]
-        #"""
 
-        #"""
         for cnt in middle_check:
             x = cnt[0]
             y = cnt[1]
@@ -122,10 +115,8 @@ class image_to_words:
 
         self.sorting()
         self.crop_words()
-        #"""
 
         for cnt in self.title:
-        #for cnt in cnts:
             cv2.drawContours(image, [cnt.astype("int")], -1, (0, 0, 255), 2)
 
         return image, self.cropped_imgs

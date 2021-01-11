@@ -28,7 +28,7 @@ class pdf_to_sentence:
             self.infer(model, img)
         return self.sentence
 
-
+"""
 if __name__ == '__main__':
     image = cv2.imread('test7.jpg')
 
@@ -43,3 +43,4 @@ if __name__ == '__main__':
     print(sentence)
     cv2.waitKey()
     cv2.destroyAllWindows()
+"""
