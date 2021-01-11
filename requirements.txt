@@ -9,6 +9,7 @@ colorama==0.4.3
 future==0.18.2
 futures==3.1.1
 idna==2.10
+imagededup==0.2.2
 importlib-metadata==1.7.0
 imutils==0.5.2
 more-itertools==8.4.0
