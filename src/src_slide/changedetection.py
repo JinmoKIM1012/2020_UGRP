@@ -45,6 +45,7 @@ class ChangeDetection:
         firstFrame = None
         # amount of contours
         contAmount = 0
+        timeStamp = []
 
         # amount of idle frames that were the same
         # used to determine if that frame should become the new firstFrame
@@ -81,6 +82,7 @@ class ChangeDetection:
 
             if cv2.countNonZero(thresh) > frame.shape[0] * frame.shape[1] * 0.05:
                 self.onTrigger.fire(original)
+                timeStamp.append(currentPosition)
 
             firstFrame = gray
 
@@ -113,6 +115,7 @@ class ChangeDetection:
 
         camera.release()
         cv2.destroyAllWindows()
+        return timeStamp
 
     def calcThresh(self, frame):
         thresh = cv2.threshold(frame, 10, 255, cv2.THRESH_BINARY)[1]

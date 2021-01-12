@@ -15,6 +15,13 @@ import requests
 import cv2
 import numpy as np
 
+import tensorflow as tf
+
+import sys
+sys.path.append(os.path.dirname(os.path.abspath(os.path.dirname(__file__))))
+from slideextractor import *
+from get_sentence import *
+from contour_pdf import *
 
 class VideoFrameGrabber(QAbstractVideoSurface):
     frameAvailable = pyqtSignal(QImage)
@@ -116,7 +123,6 @@ class VideoFrameGrabber(QAbstractVideoSurface):
 
         self.currentFrame.unmap()
 
-
 class VideoWindow(QMainWindow):
     def __init__(self, parent=None):
         super().__init__()
@@ -164,6 +170,8 @@ class VideoWindow(QMainWindow):
         self.scrshotBtn.setEnabled(False)
         self.searchBtn = QPushButton('Search')
         self.searchBtn.setEnabled(False)
+        self.searchBtn.clicked.connect(self.get_search_image)
+
         self.captureBtn = QPushButton('Capture')
         self.captureBtn.setEnabled(False)
         self.slider = QSlider(Qt.Horizontal)
@@ -193,7 +201,9 @@ class VideoWindow(QMainWindow):
 
         self.print_result = QTextBrowser()
         self.print_result.setOpenExternalLinks(True)
+        self.print_time = QTextBrowser()
         self.print_result.setFixedWidth(400)
+        self.print_time.setFixedWidth(400)
         self.search_word_line = QLineEdit()
         self.search_word_line.setFixedWidth(400)
         self.search_button1 = QPushButton('Input')
@@ -202,6 +212,7 @@ class VideoWindow(QMainWindow):
 
         search_Layout = QVBoxLayout()
         search_Layout.addWidget(self.print_result)
+        search_Layout.addWidget(self.print_time)
         search_Layout.addWidget(self.search_word_line)
         search_Layout.addWidget(self.search_button1)
         search_Layout.addWidget(self.run_button)
@@ -228,6 +239,7 @@ class VideoWindow(QMainWindow):
         self.mediaPlayer.durationChanged.connect(self.duration_changed)
 
         self.captureBtn.clicked.connect(self.capture_mode)
+        # self.print_time.setText("")
 
     def capture_mode(self):
         self.capturemode = not self.capturemode
@@ -237,11 +249,17 @@ class VideoWindow(QMainWindow):
 
     def open_file(self):
         filename, _ = QFileDialog.getOpenFileName(self, "Open Video")
-
         if filename != '':
             self.mediaPlayer.setMedia(QMediaContent(QUrl.fromLocalFile(filename)))
             self.playBtn.setEnabled(True)
             self.captureBtn.setEnabled(True)
+            slideextrac = SlideExtractor(filename)
+            self.print_time.setText("")
+            self.timestamp, self.title = slideextrac.start()
+            for i in range(len(self.title)):
+                self.print_time.append(str(self.timestamp[i]))
+                self.print_time.append(self.title[i])
+                self.print_time.append("")
 
     def screenshotCall(self):
         # Call video frame grabber
@@ -264,7 +282,6 @@ class VideoWindow(QMainWindow):
             self.playBtn.setIcon(
                 self.style().standardIcon(QStyle.SP_MediaPause)
             )
-
         else:
             self.playBtn.setIcon(
                 self.style().standardIcon(QStyle.SP_MediaPlay)
@@ -286,6 +303,20 @@ class VideoWindow(QMainWindow):
     def get_search_word(self):
         self.search_word = self.search_word_line.text()
         self.run_button.setEnabled(True)
+
+    def get_search_image(self):
+        # print(self.cropped_imgs)
+        # cv2.imshow("sds", self.cropped_imgs)
+        title = contour_pdf.image_to_words()
+        image, words = title.cropimg_to_word(self.cropped_imgs)
+
+        get_word = pdf_to_sentence()
+        sentence = get_word.get_word(words)
+
+        self.search_word_line.setText(sentence)
+        self.search_word = sentence# self.search_word_line.text()
+        self.run_button.setEnabled(True)
+        tf.reset_default_graph()
 
     def searchword(self):
         if self.search_word == '' or self.search_word is None:
@@ -314,17 +345,15 @@ class VideoWindow(QMainWindow):
 
     def process_frame(self, image):
         # Save image here
+        image.save('sdfs.jpg')
         self.convertQImageToMat(image)
         self.crop_words()
-        print(self.cropped_imgs)
-        cv2.imshow("img2", self.cropped_imgs)
-        cv2.waitKey()
-        print(np.array(self.cropped_imgs))
+
         self.counter = self.counter+1
         self.searchBtn.setEnabled(True)
 
     def mousePressEvent(self, event):
-        if event.button() == Qt.LeftButton \
+        if event.button() == Qt.LeftButton and self.capturemode\
                 and self.videowidget.x() < event.x() < self.videowidget.x() + self.videowidget.width() \
                 and self.videowidget.y() < event.y() < self.videowidget.y() + self.videowidget.height():
             self.click = True
@@ -342,11 +371,12 @@ class VideoWindow(QMainWindow):
         QWidget.mouseReleaseEvent(self, event)
 
     def mouseMoveEvent(self, event):
-        if self.r1.isVisible() \
+        if self.r1.isVisible() and self.capturemode\
                 and self.videowidget.x() < event.x() < self.videowidget.x() + self.videowidget.width() \
                 and self.videowidget.y() < event.y() < self.videowidget.y() + self.videowidget.height():
             self.x = event.x() - self.x1
             self.y = event.y() - self.y1
+
             self.r1.setGeometry(self.x1 - 5, self.y1 - 5, 10, 10)
             self.r2.setGeometry(self.x1 + self.x - 5, self.y1 - 5, 10, 10)
             self.r3.setGeometry(self.x1 - 5, self.y1 - 5 + self.y, 10, 10)
@@ -354,31 +384,36 @@ class VideoWindow(QMainWindow):
         QWidget.mouseMoveEvent(self, event)
 
     def mouseReleaseEvent(self, event):
-        if self.r1.isVisible() \
+        if self.r1.isVisible() and self.capturemode\
                 and self.videowidget.x() < event.x() < self.videowidget.x() + self.videowidget.width() \
                 and self.videowidget.y() < event.y() < self.videowidget.y() + self.videowidget.height():
-            print("첫 클릭 : (" + str(self.x1) + ", " + str(self.y1) + "), 마지막 클릭 : (" + str(event.x()) + ", " + str(
-                event.y()) + ")")
+            # print("첫 클릭 : (" + str(self.x1) + ", " + str(self.y1) + "), 마지막 클릭 : (" + str(event.x()) + ", " + str(
+            #     event.y()) + ")")
             self.scrshotBtn.setEnabled(True)
         QWidget.mouseReleaseEvent(self, event)
 
     def convertQImageToMat(self, incomingImage):
         '''  Converts a QImage into an opencv MAT format  '''
+        # incomingImage = incomingImage.convertToFormat(4)
+        #
+        # self.width = incomingImage.width()
+        # self.height = incomingImage.height()
+        #
+        self.diff = self.videowidget.height() - (self.videowidget.width() / incomingImage.width() * incomingImage.height())
+        #
+        # ptr = incomingImage.bits()
+        # ptr.setsize(incomingImage.byteCount())
+        # arr = np.array(ptr).reshape(self.height, self.width, 4)  # Copies the data
+        incomingImage.save("qimage.jpg")
+        arr = cv2.imread("qimage.jpg")
+        arr = cv2.resize(arr, dsize=(self.videowidget.width(), self.videowidget.height() - int(self.diff)))
 
-        incomingImage = incomingImage.convertToFormat(4)
-
-        width = incomingImage.width()
-        height = incomingImage.height()
-
-        ptr = incomingImage.bits()
-        ptr.setsize(incomingImage.byteCount())
-        arr = np.array(ptr).reshape(height, width, 4)  # Copies the data
         self.gray = arr
 
     def crop_words(self):
         if self.x > 0 and self.y > 0:
-            corx = self.x1
-            cory = self.y1
+            corx = self.x1 - self.videowidget.x()
+            cory = self.y1 - self.videowidget.y() - (self.diff / 2)
 
         elif self.x > 0 and self.y < 0:
             corx = self.x1
@@ -393,7 +428,11 @@ class VideoWindow(QMainWindow):
 
         w = abs(self.x)
         h = abs(self.y)
-        self.cropped_imgs = self.gray[cory: cory + h, corx: corx + w]
+        # cv2.imshow("1234", self.gray)
+        self.cropped_imgs = self.gray[int(cory): int(cory + h), int(corx): int(corx + w)]
+        # cv2.imshow("sdfdsf", self.cropped_imgs)
+        # cv2.waitKey()
+
 
 if __name__ == '__main__':
     app = QApplication(sys.argv)

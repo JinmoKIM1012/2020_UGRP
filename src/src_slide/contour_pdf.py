@@ -3,15 +3,7 @@ from imutils import contours
 import cv2
 import imutils
 
-class image_to_words:
-    def __init__(self):
-        self.gray = 0
-        self.title = []
-        self.title_num = 0
-        self.cropped_imgs = []
-        self.check_word = []
-        self.highest_y = 1000
-
+"""
     def convertQImageToMat(self, incomingImage):
         '''  Converts a QImage into an opencv MAT format  '''
 
@@ -24,15 +16,26 @@ class image_to_words:
         ptr.setsize(incomingImage.byteCount())
         arr = np.array(ptr).reshape(height, width, 4)  # Copies the data
         return arr
+"""
 
-    def cropimg_to_word(self, Qimage):
-        image = self.convertQImageToMat(Qimage)
+class image_to_words:
+    def __init__(self):
+        self.gray = 0
+        self.title = []
+        self.title_num = 0
+        self.cropped_imgs = []
+        self.check_word = []
+        self.highest_y = 1000
+
+    def cropimg_to_word(self, image):
+        #image = self.convertQImageToMat(Qimage)
+        #image = self.remove_noise(image)
         self.gray = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
         blurred = cv2.GaussianBlur(image, (9, 9), 0)
 
         edged = cv2.Canny(blurred, 30, 150)
-        edged = cv2.dilate(edged, None, iterations=1)
-        edged = cv2.erode(edged, None, iterations=1)
+        edged = cv2.dilate(edged, None, iterations=2)
+        edged = cv2.erode(edged, None, iterations=2)
 
         cnts = cv2.findContours(edged.copy(), cv2.RETR_EXTERNAL,
                                 cv2.CHAIN_APPROX_SIMPLE)
@@ -51,10 +54,10 @@ class image_to_words:
         self.sorting()
         self.crop_words()
 
-        #for cnt in self.title:
-        #    cv2.drawContours(image, [cnt.astype("int")], -1, (0, 0, 255), 2)
+        for cnt in self.title:
+            cv2.drawContours(image, [cnt.astype("int")], -1, (0, 0, 255), 2)
 
-        return self.cropped_imgs
+        return image, self.cropped_imgs
 
     def remove_noise(self, image):
         img_hsv = cv2.cvtColor(image, cv2.COLOR_BGR2HSV)
@@ -89,26 +92,22 @@ class image_to_words:
         highest = 1000
         leftmost = 1000
         middle_check = []
-        #"""
+
         for cnt in cnts:
             x, y, w, h = cv2.boundingRect(cnt)
             box = np.array([x, y, w, h], dtype="int")
             if 30 < h < 55 and y < title_y:
                 middle_check.append(box)
-        #"""
 
         if not middle_check:
             return image, middle_check
 
-        #"""
         for cnt in middle_check:
             if cnt[1] < highest:
                 highest = cnt[1]
             if 10 < cnt[1] - highest < 10 and cnt[0] < leftmost:
                 highest = cnt[1]
-        #"""
 
-        #"""
         for cnt in middle_check:
             x = cnt[0]
             y = cnt[1]
@@ -122,10 +121,8 @@ class image_to_words:
 
         self.sorting()
         self.crop_words()
-        #"""
 
         for cnt in self.title:
-        #for cnt in cnts:
             cv2.drawContours(image, [cnt.astype("int")], -1, (0, 0, 255), 2)
 
         return image, self.cropped_imgs
