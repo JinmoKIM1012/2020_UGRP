@@ -5,7 +5,7 @@ import cv2
 import imutils
 import changedetection
 import subprocess
-import get_sentece
+import get_sentence
 import contour_pdf
 import tensorflow as tf
 
@@ -29,8 +29,9 @@ class SlideExtractor:
     result = []
 
     # def __init__(self, debug, vidpath, output, stepSize, progressInterval):
-    def __init__(self):
-        self.vidpath = "../datastr1.mp4"
+    def __init__(self, vidpath):
+        # self.vidpath = "../datastr1.mp4"
+        self.vidpath = vidpath
         self.output = "../img"
         self.detection = changedetection.ChangeDetection(
             5000, 1, False)
@@ -87,30 +88,29 @@ class SlideExtractor:
         self.clearImg()
         self.detection.onTrigger += self.onTrigger
 
-        self.detection.start(cv2.VideoCapture(self.vidpath.strip()))
+        self.video = cv2.VideoCapture(self.vidpath.strip())
+        fps = self.video.get(cv2.CAP_PROP_FPS)
+        timeStamp = self.detection.start(cv2.VideoCapture(self.vidpath.strip()))
 
-        #subprocess.call('python img_dedup.py -o "' + self.output + '"', shell=True)
+        subprocess.call('python ../src_slide/img_dedup.py -o "' + self.output + '"', shell=True)
         self.listImg()
         print("SlideExtractor Done.")
         print("XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX")
 
         file_names = os.listdir(self.output)
-        i = 0
+        title_arr = []
+
         for name in file_names:
             image = cv2.imread(os.path.join(self.output, name))
             title = contour_pdf.image_to_words()
 
             image, words = title.pdf_to_title(image)
 
-            get_word = get_sentece.pdf_to_sentence()
+            get_word = get_sentence.pdf_to_sentence()
             sentence = get_word.get_word(words)
 
             print(sentence)
-
-            f = open("../output.txt", 'a')
-            f.write("page" + str(i) + "-----" + sentence +"\n")
-            f.close()
-            i = i + 1
+            title_arr.append(sentence)
 
             tf.reset_default_graph()
         # image = cv2.imread('test7.jpg')
@@ -118,8 +118,9 @@ class SlideExtractor:
         # title = contour_pdf.image_to_words()
         # image, words = title.pdf_to_title(image)
 
+        return timeStamp, title_arr
 
 # main = SlideExtractor(args['debug'], args['video'], args['output'],
 #                       args['step-size'], args['progress-interval'])
-main = SlideExtractor()
-main.start()
+# main = SlideExtractor()
+# main.start()
