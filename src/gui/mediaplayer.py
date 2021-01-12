@@ -4,6 +4,7 @@ from PyQt5.QtMultimedia import QMediaContent, QMediaPlayer, QVideoFrame, QAbstra
 from PyQt5.QtMultimediaWidgets import QVideoWidget
 from PyQt5.QtWidgets import *
 from PyQt5.QtGui import *
+from PyQt5 import uic
 import os
 import os.path as osp
 import threading
@@ -12,16 +13,32 @@ from urllib.parse import urlparse
 from bs4 import BeautifulSoup
 import requests
 
-import cv2
-import numpy as np
-
-import tensorflow as tf
+FROM_CLASS_Loading = uic.loadUiType("load.ui")[0]
 
 import sys
 sys.path.append(os.path.dirname(os.path.abspath(os.path.dirname(__file__))))
 from slideextractor import *
 from get_sentence import *
 from contour_pdf import *
+
+class loading(QWidget, FROM_CLASS_Loading):
+    def __init__(self, parent):
+        super(loading, self).__init__(parent)
+        self.setupUi(self)
+        self.center()
+        self.show()
+
+        self.movie = QMovie('loading.gif', QByteArray(), self)
+        self.movie.setCacheMode(QMovie.CacheAll)
+        self.label.setMovie(self.movie)
+        self.movie.start()
+        # self.setWindowFlags(Qt.FramelessWindowHint)
+
+    def center(self):
+        size = self.size()
+        ph = self.parent().videowidget.height()
+        pw = self.parent().videowidget.width()
+        self.move(int(pw / 2 - size.width() / 2), int(ph / 2 - size.height() / 2))
 
 class VideoFrameGrabber(QAbstractVideoSurface):
     frameAvailable = pyqtSignal(QImage)
@@ -127,6 +144,8 @@ class VideoWindow(QMainWindow):
     def __init__(self, parent=None):
         super().__init__()
         # super(VideoWindow, self).__init__(parent)
+        self.setStyleSheet("background-color: rgb(35, 35, 55)")
+
         self.setWindowTitle("PyQt5 Media Player")
         self.setGeometry(250, 100, 1500, 800)
         self.search_word = None
@@ -145,6 +164,13 @@ class VideoWindow(QMainWindow):
         thread.start()
 
         self.search_button1.clicked.connect(self.get_search_word)
+        self.search_button1.setStyleSheet("color: rgb(239, 229, 178);"
+                                          "background-color: #7A81CE;"
+                                          "border: 2px solid rgb(17, 17, 17);"
+                                          "border-radius: 8px;"
+                                          "font: 10pt 'Arial Rounded MT Bold';"
+                                          "padding: 4px;")
+
         self.run_button.clicked.connect(self.searchword)
 
         # self.statusbar = self.statusBar()
@@ -154,6 +180,10 @@ class VideoWindow(QMainWindow):
 
         self.gray = []
         self.cropped_imgs = []
+
+        self.check_videostart = False
+
+        self.dialog = QDialog()
 
         self.show()
 
@@ -168,14 +198,36 @@ class VideoWindow(QMainWindow):
         self.playBtn.setIcon(self.style().standardIcon(QStyle.SP_MediaPlay))
         self.scrshotBtn = QPushButton('ScreenShot')
         self.scrshotBtn.setEnabled(False)
+        self.scrshotBtn.setStyleSheet("color: rgb(160, 226, 170);"
+                                          "background-color: rgb(26, 54, 81);"
+                                          "border: 2px solid rgb(17, 17, 17);"
+                       "border-radius: 8px;"
+                       "font: 12pt 'Arial Rounded MT Bold';"
+                       "padding: 8px;")
+
         self.searchBtn = QPushButton('Search')
         self.searchBtn.setEnabled(False)
         self.searchBtn.clicked.connect(self.get_search_image)
+        self.searchBtn.setStyleSheet("color: rgb(160, 226, 170);"
+                                          "background-color: rgb(26, 54, 81);"
+                                          "border: 2px solid rgb(17, 17, 17);"
+                       "border-radius: 8px;"
+                       "font: 12pt 'Arial Rounded MT Bold';"
+                       "padding: 8px;")
+
 
         self.captureBtn = QPushButton('Capture')
         self.captureBtn.setEnabled(False)
+        self.captureBtn.setStyleSheet("color: rgb(160, 226, 170);"
+                                          "background-color: rgb(26, 54, 81);"
+                                          "border: 2px solid rgb(17, 17, 17);"
+                       "border-radius: 8px;"
+                       "font: 12pt 'Arial Rounded MT Bold';"
+                       "padding: 8px;")
+
         self.slider = QSlider(Qt.Horizontal)
         self.slider.setRange(0, 0)
+
         self.label = QLabel()
         self.label.setSizePolicy(QSizePolicy.Preferred, QSizePolicy.Maximum)
 
@@ -204,18 +256,48 @@ class VideoWindow(QMainWindow):
         self.print_time = QTextBrowser()
         self.print_result.setFixedWidth(400)
         self.print_time.setFixedWidth(400)
+        self.print_time.setStyleSheet("color: rgb(35, 65, 55);"
+                                        "background-color: rgb(245, 246, 228);"
+                                        "border: 2px solid rgb(17, 17, 17);"
+                                        "border-radius: 4px;"
+                                        "font: 10pt 'Arial monospaced for SAP';"
+                                        "padding: 3px;")
+
+        self.print_result.setStyleSheet("color: rgb(35, 65, 55);"
+                                        "background-color: rgb(245, 246, 228);"
+                                        "border: 2px solid rgb(17, 17, 17);"
+                                        "border-radius: 4px;"
+                                        "font: 10pt 'Arial monospaced for SAP';"
+                                        "padding: 3px;")
+
         self.search_word_line = QLineEdit()
         self.search_word_line.setFixedWidth(400)
+        self.search_word_line.setStyleSheet("color: rgb(35, 65, 55);"
+                                        "background-color: rgb(245, 246, 228);"
+                                        "border: 2px solid rgb(17, 17, 17);"
+                                        "border-radius: 4px;"
+                                        "font: 10pt 'Arial Rounded MT Bold';"
+                                        "padding: 3px;")
+
         self.search_button1 = QPushButton('Input')
-        self.run_button = QPushButton('run')
+        self.run_button = QPushButton('Run')
         self.run_button.setEnabled(False)
+        self.run_button.setStyleSheet("color: rgb(215, 188, 62);"
+                                      "background-color: rgb(84, 92, 192);"
+                                          "border: 2px solid rgb(17, 17, 17);"
+                                          "border-radius: 8px;"
+                                          "font: 10pt 'Arial Rounded MT Bold';"
+                                          "padding: 4px;")
 
         search_Layout = QVBoxLayout()
         search_Layout.addWidget(self.print_result)
         search_Layout.addWidget(self.print_time)
         search_Layout.addWidget(self.search_word_line)
-        search_Layout.addWidget(self.search_button1)
-        search_Layout.addWidget(self.run_button)
+
+        add_Layout = QHBoxLayout()
+        search_Layout.addLayout(add_Layout)
+        add_Layout.addWidget(self.search_button1)
+        add_Layout.addWidget(self.run_button)
 
         # whole_Layout = QHBoxLayout()
         whole_Layout = QGridLayout()
@@ -230,7 +312,21 @@ class VideoWindow(QMainWindow):
 
     def init_video(self):
         self.openBtn.clicked.connect(self.open_file)
+        self.openBtn.setStyleSheet("color: rgb(225, 246, 228);"
+                                          "background-color: rgb(36, 76, 112);"
+                       "border: 2px solid rgb(239, 229, 778);"
+                       "border-radius: 8px;"
+                       "font: 9pt 'Arial Rounded MT Bold';"
+                       "padding: 4px;")
+
         self.playBtn.clicked.connect(self.play_video)
+        self.playBtn.setStyleSheet("color: rgb(225, 246, 228);"
+                                          "background-color: rgb(36, 76, 112);"
+                       "border: 2px solid rgb(239, 229, 778);"
+                       "border-radius: 8px;"
+                       "font: 10pt 'Arial Rounded MT Bold';"
+                       "padding: 4px;")
+
         self.slider.sliderMoved.connect(self.set_position)
         self.scrshotBtn.clicked.connect(self.screenshotCall)
 
@@ -245,7 +341,19 @@ class VideoWindow(QMainWindow):
         self.capturemode = not self.capturemode
         if self.scrshotBtn.isEnabled():
             self.scrshotBtn.setEnabled(False)
+            self.scrshotBtn.setStyleSheet("color: rgb(160, 226, 170);"
+                                          "background-color: rgb(26, 54, 81);"
+                                          "border: 2px solid rgb(17, 17, 17);"
+                                          "border-radius: 8px;"
+                                          "font: 12pt 'Arial Rounded MT Bold';"
+                                          "padding: 8px;")
             self.searchBtn.setEnabled(True)
+            self.searchBtn.setStyleSheet("color: rgb(160, 226, 170);"
+                                          "background-color: rgb(26, 54, 81);"
+                                        "border: 2px solid rgb(17, 17, 17);"
+                                        "border-radius: 4px;"
+                                        "font: 12pt 'Arial Rounded MT Bold';"
+                                        "padding: 8px;")
 
     def open_file(self):
         filename, _ = QFileDialog.getOpenFileName(self, "Open Video")
@@ -253,6 +361,12 @@ class VideoWindow(QMainWindow):
             self.mediaPlayer.setMedia(QMediaContent(QUrl.fromLocalFile(filename)))
             self.playBtn.setEnabled(True)
             self.captureBtn.setEnabled(True)
+            self.captureBtn.setStyleSheet("color: rgb(225, 246, 228);"
+                                          "background-color: rgb(36, 76, 112);"
+                                          "border: 2px solid rgb(17, 17, 17);"
+                                          "border-radius: 8px;"
+                                          "font: 12pt 'Arial Rounded MT Bold';"
+                                          "padding: 8px;")
             slideextrac = SlideExtractor(filename)
             self.print_time.setText("")
             self.timestamp, self.title = slideextrac.start()
@@ -266,13 +380,13 @@ class VideoWindow(QMainWindow):
         self.grabber = VideoFrameGrabber(self.videowidget, self)
         self.mediaPlayer.setVideoOutput(self.grabber)
         self.grabber.frameAvailable.connect(self.process_frame)
-        self.label.setText("Taking a screenshot of image " + str(self.counter) + " ....")
+        # self.label.setText("Taking a screenshot of image " + str(self.counter) + " ....")
         self.mediaPlayer.pause()
 
     def play_video(self):
+        self.check_videostart = True
         if self.mediaPlayer.state() == QMediaPlayer.PlayingState:
             self.mediaPlayer.pause()
-
         else:
             self.mediaPlayer.play()
             self.mediaPlayer.setVideoOutput(self.videowidget)
@@ -299,14 +413,24 @@ class VideoWindow(QMainWindow):
     def handle_errors(self):
         self.playBtn.setEnabled(False)
         self.label.setText("Error: " + self.mediaPlayer.errorString())
+        self.check_videostart = False
 
     def get_search_word(self):
         self.search_word = self.search_word_line.text()
         self.run_button.setEnabled(True)
+        self.run_button.setStyleSheet("color: rgb(239, 229, 178);"
+                                          "background-color: #7A81CE;"
+                                          "border: 2px solid rgb(17, 17, 17);"
+                                          "border-radius: 8px;"
+                                          "font: 10pt 'Arial Rounded MT Bold';"
+                                          "padding: 4px;")
 
     def get_search_image(self):
         # print(self.cropped_imgs)
         # cv2.imshow("sds", self.cropped_imgs)
+
+
+        print("nooo")
         title = contour_pdf.image_to_words()
         image, words = title.cropimg_to_word(self.cropped_imgs)
 
@@ -316,13 +440,24 @@ class VideoWindow(QMainWindow):
         self.search_word_line.setText(sentence)
         self.search_word = sentence# self.search_word_line.text()
         self.run_button.setEnabled(True)
+        self.run_button.setStyleSheet("color: rgb(239, 229, 178);"
+                                          "background-color: #7A81CE;"
+                                          "border: 2px solid rgb(17, 17, 17);"
+                                          "border-radius: 8px;"
+                                          "font: 10pt 'Arial Rounded MT Bold';"
+                                          "padding: 4px;")
         tf.reset_default_graph()
 
     def searchword(self):
         if self.search_word == '' or self.search_word is None:
             self.print_result.setText("Please insert word")
             self.run_button.setEnabled(False)
-
+            self.run_button.setStyleSheet("color: rgb(215, 188, 62);"
+                                          "background-color: rgb(84, 92, 192);"
+                                          "border: 2px solid rgb(17, 17, 17);"
+                                          "border-radius: 8px;"
+                                          "font: 10pt 'Arial Rounded MT Bold';"
+                                          "padding: 4px;")
         else:
             quo = urllib.parse.quote(self.search_word)
             base = 'https://www.google.com/search?client=firefox-b-d&q='+quo
@@ -345,12 +480,16 @@ class VideoWindow(QMainWindow):
 
     def process_frame(self, image):
         # Save image here
-        image.save('sdfs.jpg')
         self.convertQImageToMat(image)
         self.crop_words()
-
         self.counter = self.counter+1
         self.searchBtn.setEnabled(True)
+        self.searchBtn.setStyleSheet("color: rgb(225, 246, 228);"
+                                          "background-color: rgb(36, 76, 112);"
+                      "border: 2px solid rgb(17, 17, 17);"
+                      "border-radius: 4px;"
+                      "font: 12pt 'Arial Rounded MT Bold';"
+                      "padding: 8px;")
 
     def mousePressEvent(self, event):
         if event.button() == Qt.LeftButton and self.capturemode\
@@ -386,26 +525,27 @@ class VideoWindow(QMainWindow):
     def mouseReleaseEvent(self, event):
         if self.r1.isVisible() and self.capturemode\
                 and self.videowidget.x() < event.x() < self.videowidget.x() + self.videowidget.width() \
-                and self.videowidget.y() < event.y() < self.videowidget.y() + self.videowidget.height():
-            # print("첫 클릭 : (" + str(self.x1) + ", " + str(self.y1) + "), 마지막 클릭 : (" + str(event.x()) + ", " + str(
-            #     event.y()) + ")")
+                and self.videowidget.y() < event.y() < self.videowidget.y() + self.videowidget.height()\
+                and self.check_videostart:
             self.scrshotBtn.setEnabled(True)
+            self.scrshotBtn.setStyleSheet("color: rgb(225, 246, 228);"
+                                          "background-color: rgb(36, 76, 112);"
+                                        "border: 2px solid rgb(17, 17, 17);"
+                                        "border-radius: 4px;"
+                                        "font: 12pt 'Arial Rounded MT Bold';"
+                                        "padding: 8px;")
         QWidget.mouseReleaseEvent(self, event)
 
     def convertQImageToMat(self, incomingImage):
         '''  Converts a QImage into an opencv MAT format  '''
-        # incomingImage = incomingImage.convertToFormat(4)
-        #
-        # self.width = incomingImage.width()
-        # self.height = incomingImage.height()
-        #
+        incomingImage = incomingImage.convertToFormat(4)
+        self.width = incomingImage.width()
+        self.height = incomingImage.height()
         self.diff = self.videowidget.height() - (self.videowidget.width() / incomingImage.width() * incomingImage.height())
-        #
-        # ptr = incomingImage.bits()
-        # ptr.setsize(incomingImage.byteCount())
-        # arr = np.array(ptr).reshape(self.height, self.width, 4)  # Copies the data
-        incomingImage.save("qimage.jpg")
-        arr = cv2.imread("qimage.jpg")
+
+        ptr = incomingImage.bits()
+        ptr.setsize(incomingImage.byteCount())
+        arr = np.array(ptr).reshape(self.height, self.width, 4)  # Copies the data
         arr = cv2.resize(arr, dsize=(self.videowidget.width(), self.videowidget.height() - int(self.diff)))
 
         self.gray = arr
@@ -428,10 +568,7 @@ class VideoWindow(QMainWindow):
 
         w = abs(self.x)
         h = abs(self.y)
-        # cv2.imshow("1234", self.gray)
         self.cropped_imgs = self.gray[int(cory): int(cory + h), int(corx): int(corx + w)]
-        # cv2.imshow("sdfdsf", self.cropped_imgs)
-        # cv2.waitKey()
 
 
 if __name__ == '__main__':
