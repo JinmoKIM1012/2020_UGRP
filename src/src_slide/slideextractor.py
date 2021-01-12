@@ -9,20 +9,6 @@ import get_sentence
 import contour_pdf
 import tensorflow as tf
 
-# parser = argparse.ArgumentParser()
-# parser.add_argument("-v", "--video", dest="video", required=True,
-#                     help="the path to your video file to be analyzed")
-# parser.add_argument("-o", "--output", dest="output", default="../img",
-#                     help="the output pdf file where the extracted slides will be saved")
-# parser.add_argument("-s", "--step-size", dest="step-size", default=20,
-#                     help="the amount of frames skipped in every iteration")
-# parser.add_argument("-p", "--progress-interval", dest="progress-interval", default=1,
-#                     help="how many percent should be skipped between each progress output")
-# parser.add_argument("-d", "--debug", dest="debug", default=False, action="store_true",
-#                     help="the path to your video file to be analyzed")
-# args = vars(parser.parse_args())
-
-
 
 class SlideExtractor:
     slideCounter = 10
@@ -91,13 +77,13 @@ class SlideExtractor:
         self.video = cv2.VideoCapture(self.vidpath.strip())
         fps = self.video.get(cv2.CAP_PROP_FPS)
         timeStamp = self.detection.start(cv2.VideoCapture(self.vidpath.strip()))
-
-        subprocess.call('python ../src_slide/img_dedup.py -o "' + self.output + '"', shell=True)
         self.listImg()
-        print("SlideExtractor Done.")
-        print("XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX")
+        # print("SlideExtractor Done.")
+        # print("XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX")
 
         file_names = os.listdir(self.output)
+        if len(file_names) > 1:
+            subprocess.call('python ../src_slide/img_dedup.py -o "' + self.output + '"', shell=True)
         title_arr = []
 
         for name in file_names:
@@ -109,18 +95,9 @@ class SlideExtractor:
             get_word = get_sentence.pdf_to_sentence()
             sentence = get_word.get_word(words)
 
-            print(sentence)
+            # print(sentence)
             title_arr.append(sentence)
 
             tf.reset_default_graph()
-        # image = cv2.imread('test7.jpg')
-        #
-        # title = contour_pdf.image_to_words()
-        # image, words = title.pdf_to_title(image)
 
         return timeStamp, title_arr
-
-# main = SlideExtractor(args['debug'], args['video'], args['output'],
-#                       args['step-size'], args['progress-interval'])
-# main = SlideExtractor()
-# main.start()
